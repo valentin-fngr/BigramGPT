@@ -3,7 +3,7 @@ import torch.nn as nn
 import config
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from model import BigramBaseline
+from model import BigramBaseline, BigramAttn
 
 # read text 
 # get set of characters 
@@ -56,7 +56,7 @@ def main():
     X_train, X_test, y_train, y_test = get_data()
     nb_batches = X_train.shape[0] // config.batch_size
     criterion = torch.nn.CrossEntropyLoss()
-    model = BigramBaseline(len(chars)).to(config.device)
+    model = BigramAttn(len(chars)).to(config.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
     print("Number of batches : ", nb_batches)
@@ -84,7 +84,7 @@ def main():
 
     
         print(f"Epoch {epoch} : cross entropy = {total_loss / nb_batches}")
-        # print("".join(decode(model.generate(300)[0].tolist())))
+        print("".join(decode(model.generate(500)[0].tolist())))
 
 if __name__ == "__main__":
     main() 
