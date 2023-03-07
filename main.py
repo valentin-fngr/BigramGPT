@@ -84,6 +84,7 @@ def main():
 
     
         print(f"Epoch {epoch} : cross entropy = {total_loss / nb_batches}")
+        print("".join(decode(model.generate(300)[0].tolist())))
 
 if __name__ == "__main__":
     main() 
