@@ -4,7 +4,8 @@ import config
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from model import BigramBaseline, BigramAttn
-
+import argparse
+from torch.utils.tensorboard import SummaryWriter
 # read text 
 # get set of characters 
 # get char to number 
@@ -51,7 +52,32 @@ def get_data():
 
 
 
+
+def evaluate(X_test, y_test, model, criterion, nb_batches=1000):
+
+    total_loss = 0.0
+    model.eval()
+    for i in range(nb_batches):
+    
+        # batch 
+        x = X_test[config.batch_size*i:(config.batch_size*i) + config.batch_size].long()
+        target = y_test[config.batch_size*i:(config.batch_size*i) + config.batch_size].long().view(-1)
+
+        preds = model(x)
+        loss = criterion(preds, target) 
+        total_loss += loss.item()
+
+    return total_loss / nb_batches
+
+     
+
 def main(): 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name", default="default_training")
+    args = parser.parse_args()
+    run_name = args.name
+
+    writer = SummaryWriter("runs/" + run_name)
 
     X_train, X_test, y_train, y_test = get_data()
     nb_batches = X_train.shape[0] // config.batch_size
@@ -82,9 +108,13 @@ def main():
             loss.backward() 
             optimizer.step() 
 
-    
+        eval_loss = evaluate(X_test, y_test, model, criterion)
+
+        writer.add_scalar("Train/Loss", total_loss / nb_batches)
+        writer.add_scalar("Eval/Loss", eval_loss)
+        writer.add_text(f"text_at_epoch_{epoch}", "".join(decode(model.generate(500)[0].tolist())), epoch)
+
         print(f"Epoch {epoch} : cross entropy = {total_loss / nb_batches}")
-        print("".join(decode(model.generate(500)[0].tolist())))
 
 if __name__ == "__main__":
     main() 

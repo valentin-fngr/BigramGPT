@@ -33,7 +33,6 @@ class AttentionHead(nn.Module):
 
 class MultiHeadAttention(nn.Module): 
 
-
     def __init__(self, in_c, nb_head, d_out):
         
         if d_out % nb_head != 0: 
