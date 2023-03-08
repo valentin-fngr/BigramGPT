@@ -85,12 +85,12 @@ class BigramBaseline(nn.Module):
 
 class BigramAttn(nn.Module): 
 
-    def __init__(self, vocab_size, d_emb=256): 
+    def __init__(self, vocab_size, d_emb=config.dim_head): 
         super().__init__()
         self.embeddings = nn.Embedding(vocab_size, d_emb)
         self.positional_embedding = nn.Embedding(config.chunk_size, d_emb)
-        self.attn_head1 = MultiHeadAttention(d_emb, 8, d_emb)
-        self.attn_head2 = MultiHeadAttention(d_emb, 8, d_emb)
+        self.attn_head1 = MultiHeadAttention(d_emb, config.nb_heads, d_emb)
+        self.attn_head2 = MultiHeadAttention(d_emb, config.nb_heads, d_emb)
         
         self.linear = nn.Linear(d_emb, vocab_size)
         self.vocab_size = vocab_size

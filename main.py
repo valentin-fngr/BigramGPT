@@ -75,7 +75,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", default="default_training")
     args = parser.parse_args()
-    run_name = args.name
+    run_name = args.name + f" \
+     _lr={config.lr}_bs={config.batch_size}_chunk_size={config.chunk_size}_#head={config.nb_heads} \
+     _dim_head={config.dim_head}\
+    "
 
     writer = SummaryWriter("runs/" + run_name)
 
