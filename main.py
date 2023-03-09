@@ -12,6 +12,9 @@ from torch.utils.tensorboard import SummaryWriter
 # get number to char 
 
 
+torch.manual_seed(1337)
+
+
 with open(config.data, "r") as f:
     text = f.read()
     chars = sorted(list(set(text)))
@@ -72,11 +75,9 @@ def evaluate(X_test, y_test, model, criterion, nb_batches=1000):
      
 
 def main(): 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", default="default_training")
-    args = parser.parse_args()
-    run_name = args.name + f" \
-     _lr={config.lr}_bs={config.batch_size}_chunk_size={config.chunk_size}_#head={config.nb_heads} \
+    
+    run_name = f" \
+     masked_nb_blocks={config.nb_blocks}_lr={config.lr}_bs={config.batch_size}_chunk_size={config.chunk_size}_#head={config.nb_heads} \
      _dim_head={config.dim_head}\
     "
 
@@ -93,6 +94,7 @@ def main():
     print("--- Training started ---", "\n")
     for epoch in range(config.epochs): 
 
+        model.train()
         total_loss = 0.0
 
         for i in range(nb_batches):
@@ -113,8 +115,8 @@ def main():
 
         eval_loss = evaluate(X_test, y_test, model, criterion)
 
-        writer.add_scalar("Train/Loss", total_loss / nb_batches)
-        writer.add_scalar("Eval/Loss", eval_loss)
+        writer.add_scalar("Train/Loss", total_loss / nb_batches, epoch)
+        writer.add_scalar("Eval/Loss", eval_loss, epoch)
         writer.add_text(f"text_at_epoch_{epoch}", "".join(decode(model.generate(500)[0].tolist())), epoch)
 
         print(f"Epoch {epoch} : cross entropy = {total_loss / nb_batches}")
