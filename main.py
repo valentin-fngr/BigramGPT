@@ -1,10 +1,11 @@
 import torch  
 import torch.nn as nn
 import config
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
 from model import BigramBaseline, BigramAttn
 import argparse
+from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 # read text 
 # get set of characters 
@@ -13,7 +14,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 torch.manual_seed(1337)
-
 
 with open(config.data, "r") as f:
     text = f.read()
@@ -52,14 +52,29 @@ def get_data():
 
     return X_train, X_test, y_train, y_test
 
+class CustomDataset(Dataset): 
+
+    def __init__(self, x, y): 
+        self.x = x 
+        self.y = y 
+
+    def __len__(self): 
+        return self.x.shape[0]
+
+    def __getitem__(self, idx): 
+        
+        sample_x = self.x[idx] 
+        sample_y = self.y[idx] 
+
+        return sample_x, sample_y
 
 
 
-
-def evaluate(X_test, y_test, model, criterion, nb_batches=1000):
+def evaluate(X_test, y_test, model, criterion):
 
     total_loss = 0.0
     model.eval()
+    nb_batches = X_test.shape[0] // config.batch_size
     for i in range(nb_batches):
     
         # batch 
@@ -71,38 +86,39 @@ def evaluate(X_test, y_test, model, criterion, nb_batches=1000):
         total_loss += loss.item()
 
     return total_loss / nb_batches
-
      
 
 def main(): 
     
     run_name = f" \
-     masked_nb_blocks={config.nb_blocks}_lr={config.lr}_bs={config.batch_size}_chunk_size={config.chunk_size}_#head={config.nb_heads} \
+     simple_bigram={config.nb_blocks}_lr={config.lr}_bs={config.batch_size}_chunk_size={config.chunk_size}_#head={config.nb_heads} \
      _dim_head={config.dim_head}\
     "
 
     writer = SummaryWriter("runs/" + run_name)
 
     X_train, X_test, y_train, y_test = get_data()
-    nb_batches = X_train.shape[0] // config.batch_size
+    nb_batches = len(X_train) // config.batch_size
     criterion = torch.nn.CrossEntropyLoss()
     model = BigramAttn(len(chars)).to(config.device)
+    print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
     print("Number of batches : ", nb_batches)
+    print("number params : ", model.get_number_params())
 
     print("--- Training started ---", "\n")
     for epoch in range(config.epochs): 
-
         model.train()
+
         total_loss = 0.0
 
-        for i in range(nb_batches):
-            
-            # batch 
+        for i in tqdm(range(nb_batches)):
+        
+        # batch 
             x = X_train[config.batch_size*i:(config.batch_size*i) + config.batch_size].long()
             target = y_train[config.batch_size*i:(config.batch_size*i) + config.batch_size].long().view(-1)
-
+        
             preds = model(x)
             loss = criterion(preds, target) 
 
@@ -114,12 +130,12 @@ def main():
             optimizer.step() 
 
         eval_loss = evaluate(X_test, y_test, model, criterion)
-
+        print("train : ", total_loss / nb_batches, "eval : ", eval_loss)
         writer.add_scalar("Train/Loss", total_loss / nb_batches, epoch)
         writer.add_scalar("Eval/Loss", eval_loss, epoch)
         writer.add_text(f"text_at_epoch_{epoch}", "".join(decode(model.generate(500)[0].tolist())), epoch)
 
-        print(f"Epoch {epoch} : cross entropy = {total_loss / nb_batches}")
+
 
 if __name__ == "__main__":
     main() 

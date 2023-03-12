@@ -31,10 +31,10 @@ class AttentionBlock(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_out)
 
     def forward(self, x): 
-        out = self.multihead(x) 
-        x = self.layer_norm1(x + out)
-        out = self.ff(x)
-        out = self.layer_norm2(x + out)
+        out = self.multihead(self.layer_norm1(x)) 
+        x = x + out
+        out = self.ff(self.layer_norm2(x))
+        out = x + out
         return out
         
 
@@ -105,7 +105,6 @@ class BigramBaseline(nn.Module):
     
     def generate(self, max_gen_length):
         with torch.no_grad():
-
             sequence = torch.zeros((1, 1)).to(config.device).type(torch.long)
             for i in range(max_gen_length): 
                 # compute logit
@@ -117,16 +116,13 @@ class BigramBaseline(nn.Module):
             return sequence
 
 
-
-
 class BigramAttn(nn.Module): 
 
     def __init__(self, vocab_size, nb_blocks=config.nb_blocks, d_emb=config.dim_head): 
         super().__init__()
         self.embeddings = nn.Embedding(vocab_size, d_emb)
         self.positional_embedding = nn.Embedding(config.chunk_size, d_emb)
-        self.nb_blocks = nn.Sequential(*[AttentionBlock(d_emb, config.nb_heads, d_emb) for _ in range(nb_blocks)])
-        
+        self.attn_blocks = nn.Sequential(*[AttentionBlock(d_emb, config.nb_heads, d_emb) for _ in range(nb_blocks)])
         self.linear = nn.Linear(d_emb, vocab_size)
         self.vocab_size = vocab_size
         self.d_emb = d_emb
@@ -137,14 +133,18 @@ class BigramAttn(nn.Module):
         positions = self.positional_embedding(torch.arange(T,device=config.device)[None, :]) # (B, T, d)
         
         x = logits + positions # (B, T, d)
-        x1 = self.nb_blocks(x) # (B, T, d)
-        output = self.linear(x1) # (B, T, vocab_size)
+        x = self.attn_blocks(x)
+        output = self.linear(x) # (B, T, vocab_size)
         output = output.view(-1, self.vocab_size)
         return output
     
+
+    def get_number_params(self): 
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+ 
+    
     def generate(self, max_gen_length):
         with torch.no_grad():
-
             sequence = torch.zeros((1, config.chunk_size)).to(config.device).type(torch.long)
             for i in range(max_gen_length): 
                 # compute logit
@@ -152,5 +152,4 @@ class BigramAttn(nn.Module):
                 probs = F.softmax(logits, dim=1) 
                 sample_next_idx = torch.multinomial(probs, 1)
                 sequence = torch.concat([sequence, sample_next_idx[-1][None, :]], dim=1)
-            print(sequence)
             return sequence

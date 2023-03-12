@@ -1,9 +1,9 @@
 data = "data.txt"
 device = "cuda"
-nb_heads = 16
-dim_head = 32
+nb_heads = 6
+dim_head = 384
 batch_size = 64
-chunk_size = 10
-epochs = 100
-lr = 0.0001
-nb_blocks = 2
+chunk_size = 20
+epochs = 150
+lr = 0.0003
+nb_blocks = 6
